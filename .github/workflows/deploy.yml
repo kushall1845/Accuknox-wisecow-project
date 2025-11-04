@@ -33,7 +33,8 @@ jobs:
         docker push ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:$TAG
 
     - name: Update deployment.yaml
-      run: sed -i "s|image:.*|image: $IMAGE:$TAG|" k8s_files/01-deployment.yaml
+      run: |
+        sed -i "s|image:.*|image: ${IMAGE}:${TAG}|" k8s_files/01-deployment.yaml
 
     - name: Configure AWS CLI
       run: |
