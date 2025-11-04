@@ -53,3 +53,4 @@ jobs:
           touch $SETUP_MARKER
         else
           kubectl apply -f k8s_files/01-deployment.yaml
+        fi
