@@ -1,0 +1,55 @@
+name: CI/CD to EKS
+
+on:
+  push:
+    branches: [ master ]
+
+env:
+  IMAGE: kushall1845/wisecow
+  AWS_REGION: us-east-2
+  CLUSTER_NAME: kushal_01-cluster
+  SETUP_MARKER: .setup_done
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set dynamic image tag
+      run: echo "TAG=v${GITHUB_RUN_NUMBER}-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+
+    - name: Build Docker image
+      run: docker build -t $IMAGE:$TAG .
+
+    - name: Login to Docker Hub
+      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+    - name: Push Docker image
+      run: |
+        docker tag $IMAGE:$TAG ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:$TAG
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:$TAG
+
+    - name: Update deployment.yaml
+      run: sed -i "s|image:.*|image: $IMAGE:$TAG|" k8s_files/01-deployment.yaml
+
+    - name: Configure AWS CLI
+      run: |
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set region $AWS_REGION
+
+    - name: Get EKS credentials
+      run: aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
+
+    - name: Conditional deployment
+      run: |
+        if [ ! -f $SETUP_MARKER ]; then
+          chmod +x script.sh
+          ./script.sh
+          touch $SETUP_MARKER
+        else
+          kubectl apply -f k8s_files/01-deployment.yaml
+        fi
