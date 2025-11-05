@@ -20,7 +20,7 @@ If any metric exceeds predefined thresholds (e.g., CPU usage > 80%), the script 
 
 
 
-## 2️⃣ Application Uptime Checker
+## 2️⃣ Application_Health_Checker
 
 **Objective:**  
 Check the uptime and availability of an application by:
