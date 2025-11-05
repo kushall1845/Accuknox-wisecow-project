@@ -89,10 +89,4 @@ jobs:
 
 
 
-    - name: Create or replace TLS secret
-      run: |
-          kubectl delete secret $CERT_NAME -n $NAMESPACE --ignore-not-found
-          kubectl create secret tls $CERT_NAME \
-          --cert=$CRT_FILE \
-          --key=$KEY_FILE \
-          --namespace=$NAMESPACE
+   
