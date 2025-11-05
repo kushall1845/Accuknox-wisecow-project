@@ -16,7 +16,7 @@ chmod +x /usr/local/bin/monitor_script.sh
 Run manually or schedule with cron
 
 ```bash
-script.sh
+monitor_script.sh
 ```
 
 or
