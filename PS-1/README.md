@@ -84,3 +84,6 @@ If everything is configured correctly, this command should show a valid HTTPS re
 ---
 
 
+## 📸 Result Screenshot
+
+![Result](https://github.com/kushall1845/Accuknox-wisecow-project/blob/master/PS-1/Result.png)
