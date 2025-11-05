@@ -1,42 +1,87 @@
-#!/bin/bash
-set -e
+name: CI/CD to EKS
 
-NAMESPACE="wisecow"
-CERT_NAME="wisecow-tls"
-CRT_FILE="tls.crt"
-KEY_FILE="tls.key"
-MANIFEST_DIR="k8s_files"
+on:
+  push:
+    branches: [ master ]
 
-echo "🔧 Creating namespace: $NAMESPACE"
-kubectl create namespace $NAMESPACE || echo "Namespace $NAMESPACE already exists"
+env:
+  IMAGE: kushall1845/wisecow
+  AWS_REGION: us-east-2
+  CLUSTER_NAME: kushal_01-cluster
+  NAMESPACE: wisecow
+  CERT_NAME: wisecow-tls
+  CRT_FILE: tls.crt
+  KEY_FILE: tls.key
+  MANIFEST_DIR: k8s_files
 
-echo "🚀 Installing NGINX Ingress Controller on AWS"
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/aws/deploy.yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-echo "🔐 Generating self-signed TLS certificate for wisecow.local"
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout $KEY_FILE -out $CRT_FILE \
-  -subj "/CN=wisecow.local/O=Wisecow"
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-echo "📦 Creating TLS secret '$CERT_NAME' in namespace '$NAMESPACE'"
-kubectl create secret tls $CERT_NAME \
-  --cert=$CRT_FILE \
-  --key=$KEY_FILE \
-  --namespace=$NAMESPACE
+    - name: Set dynamic image tag
+      run: echo "TAG=v${GITHUB_RUN_NUMBER}-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
 
-echo "🧹 Cleaning up certificate files"
-rm -f $CRT_FILE $KEY_FILE
+    - name: Build Docker image
+      run: docker build -t $IMAGE:$TAG .
 
-echo "📦 Applying deployment.yaml"
-kubectl apply -f $MANIFEST_DIR/01-deployment.yaml
+    - name: Login to Docker Hub
+      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-echo "📡 Applying service.yaml"
-kubectl apply -f $MANIFEST_DIR/02-service.yaml
+    - name: Push Docker image
+      run: |
+        docker tag $IMAGE:$TAG ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:$TAG
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:$TAG
 
-echo "⏳ Sleeping for 30 seconds to allow LoadBalancer provisioning..."
-sleep 30
+    - name: Update deployment.yaml
+      run: |
+        sed -i "s|image:.*|image: ${IMAGE}:${TAG}|" $MANIFEST_DIR/01-deployment.yaml
 
-echo "🌐 Applying ingress.yaml"
-kubectl apply -f $MANIFEST_DIR/03-ingress.yaml
+    - name: Configure AWS CLI
+      run: |
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set region $AWS_REGION
 
-echo "✅ All resources applied successfully. TLS is active and Ingress is configured."
+    - name: Get EKS credentials
+      run: aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
+
+    - name: Create namespace if not exists
+      run: |
+        kubectl get namespace $NAMESPACE >/dev/null 2>&1 || \
+        kubectl create namespace $NAMESPACE
+
+    - name: Install NGINX Ingress Controller
+      run: |
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/aws/deploy.yaml
+
+    - name: Generate self-signed TLS certificate
+      run: |
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout $KEY_FILE -out $CRT_FILE \
+          -subj "/CN=wisecow.local/O=Wisecow"
+
+    - name: Create TLS secret
+      run: |
+        kubectl create secret tls $CERT_NAME \
+          --cert=$CRT_FILE \
+          --key=$KEY_FILE \
+          --namespace=$NAMESPACE
+
+    - name: Clean up certificate files
+      run: rm -f $CRT_FILE $KEY_FILE
+
+    - name: Apply deployment manifest
+      run: kubectl apply -f $MANIFEST_DIR/01-deployment.yaml
+
+    - name: Apply service manifest
+      run: kubectl apply -f $MANIFEST_DIR/02-service.yaml
+
+    - name: Wait for LoadBalancer provisioning
+      run: sleep 30
+
+    - name: Apply ingress manifest
+      run: kubectl apply -f $MANIFEST_DIR/03-ingress.yaml
