@@ -1,0 +1,92 @@
+name: CI/CD to EKS
+
+#on:
+  #push:
+    #branches: [ master ]
+
+env:
+  IMAGE: kushall1845/wisecow
+  AWS_REGION: us-east-2
+  CLUSTER_NAME: kushal_01-cluster
+  NAMESPACE: wisecow
+  CERT_NAME: wisecow-tls
+  CRT_FILE: tls.crt
+  KEY_FILE: tls.key
+  MANIFEST_DIR: k8s_files
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set dynamic image tag
+      run: echo "TAG=v${GITHUB_RUN_NUMBER}-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+
+    - name: Build Docker image
+      run: docker build -t $IMAGE:$TAG .
+
+    - name: Login to Docker Hub
+      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+    - name: Push Docker image
+      run: |
+        docker tag $IMAGE:$TAG ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:$TAG
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:$TAG
+
+    - name: Update deployment.yaml
+      run: |
+        sed -i "s|image:.*|image: ${IMAGE}:${TAG}|" $MANIFEST_DIR/01-deployment.yaml
+
+    - name: Configure AWS CLI
+      run: |
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set region $AWS_REGION
+
+    - name: Get EKS credentials
+      run: aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
+
+    - name: Create namespace if not exists
+      run: |
+        kubectl get namespace $NAMESPACE >/dev/null 2>&1 || \
+        kubectl create namespace $NAMESPACE
+
+    - name: Install NGINX Ingress Controller
+      run: |
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/aws/deploy.yaml
+
+    - name: Generate self-signed TLS certificate
+      run: |
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout $KEY_FILE -out $CRT_FILE \
+          -subj "/CN=wisecow.local/O=Wisecow"
+
+    - name: Create or replace TLS secret
+      run: |
+          kubectl delete secret $CERT_NAME -n $NAMESPACE --ignore-not-found
+          kubectl create secret tls $CERT_NAME \
+          --cert=$CRT_FILE \
+          --key=$KEY_FILE \
+          --namespace=$NAMESPACE
+
+    - name: Clean up certificate files
+      run: rm -f $CRT_FILE $KEY_FILE
+
+    - name: Apply deployment manifest
+      run: kubectl apply -f $MANIFEST_DIR/01-deployment.yaml
+
+    - name: Apply service manifest
+      run: kubectl apply -f $MANIFEST_DIR/02-service.yaml
+
+    - name: Wait for LoadBalancer provisioning
+      run: sleep 30
+
+    - name: Apply ingress manifest
+      run: kubectl apply -f $MANIFEST_DIR/03-ingress.yaml
+
+
+
+   
