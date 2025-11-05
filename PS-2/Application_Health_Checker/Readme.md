@@ -36,50 +36,9 @@ Add:
 (the script gets executed every 1 minute)
 
 
-Here’s your complete and clean **`README.md`** file — including your original “How to use” section and the new “Test Locally (Optional)” section, with **no emojis** and fully Markdown-formatted:
 
----
 
-````markdown
-# How to Use
-
-Save the script
-
-```bash
-sudo vim /usr/local/bin/monitor_script.sh
-````
-
-Make it executable
-
-```bash
-chmod +x /usr/local/bin/monitor_script.sh
-```
-
-Run manually or schedule with cron
-
-```bash
-script.sh
-```
-
-or
-
-```bash
-crontab -e
-```
-
-Choose any file editor of your choice
-
-Add:
-
-```
-*/1 * * * * /usr/local/bin/monitor_script.sh
-```
-
-(the script gets executed for every 1 minute)
-
----
-
-## 4. Test Locally (Optional)
+##  Test Locally (Optional)
 
 If you don’t have an app running, use a mock server:
 
