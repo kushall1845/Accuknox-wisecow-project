@@ -37,7 +37,4 @@ Add:
 
 ```
 
----
 
-Would you like me to add syntax highlighting for the cron line too (so it looks like code when viewed on GitHub)?
-```
