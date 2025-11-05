@@ -1,8 +1,8 @@
 name: CI/CD to EKS
 
-#on:
-  #push:
-    #branches: [ master ]
+on:
+  push:
+    branches: [ master ]
 
 env:
   IMAGE: kushall1845/wisecow
@@ -12,7 +12,7 @@ env:
   CERT_NAME: wisecow-tls
   CRT_FILE: tls.crt
   KEY_FILE: tls.key
-  MANIFEST_DIR: k8s_files
+  MANIFEST_DIR: PS-1/k8s_files
 
 jobs:
   deploy:
@@ -26,7 +26,7 @@ jobs:
       run: echo "TAG=v${GITHUB_RUN_NUMBER}-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
 
     - name: Build Docker image
-      run: docker build -t $IMAGE:$TAG .
+      run: docker build -t $IMAGE:$TAG ./PS-1
 
     - name: Login to Docker Hub
       run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
