@@ -1,32 +1,43 @@
-# Monitor Script Setup Guide
 
-This guide explains how to set up and schedule the `monitor_script.sh` to run automatically every minute.
+# How to Use
 
-## Steps to Use
+Save the script
 
-### 1. Save the Script
-Open the script file in a text editor and save it to `/usr/local/bin`:
 ```bash
 sudo vim /usr/local/bin/monitor_script.sh
+````
 
-### 2. Make It Executable
-Grant execution permissions to the script:
+Make it executable
+
 ```bash
 chmod +x /usr/local/bin/monitor_script.sh
+```
 
-### 3. Run Manually or Schedule with Cron
+Run manually or schedule with cron
+
 ```bash
-monitor_script.sh
+script.sh
+```
 
 or
 
+```bash
 crontab -e
+```
 
-choose you favourite file editor
+Choose any file editor of your choice
 
 Add:
+
+```
 */1 * * * * /usr/local/bin/monitor_script.sh
+```
 
-(the script get's executed for every 1 minute) 
+(the script gets executed every 1 minute)
 
+```
 
+---
+
+Would you like me to add syntax highlighting for the cron line too (so it looks like code when viewed on GitHub)?
+```
