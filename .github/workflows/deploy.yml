@@ -1,8 +1,8 @@
 name: CI/CD to EKS
 
-on:
-  push:
-    branches: [ master ]
+#on:
+  #push:
+    #branches: [ master ]
 
 env:
   IMAGE: kushall1845/wisecow
