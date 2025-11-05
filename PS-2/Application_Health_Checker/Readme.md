@@ -57,7 +57,7 @@ APP_URL="http://localhost:8080"
 Run:
 
 ```bash
-bash /usr/local/bin/health_check.sh
+health_check.sh
 ```
 
 You should see:
