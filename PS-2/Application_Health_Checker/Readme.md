@@ -45,7 +45,7 @@ If you don’t have an app running, use a mock server:
 ### Python HTTP Server
 
 ```bash
-python3 -m http.server 8080
+python3 -m http.server 8080 &
 ```
 
 Then update the script:
